@@ -27,7 +27,10 @@ module.exports = function(knex, path, tableName, mapTo, options) {
 
     var inserts = [];
 
-    stream.on('data', function(chunk) {
+    stream.on('data', onData);
+    stream.on('end', onEnd);
+
+    function onData(chunk) {
       var tempRows = chunk.split(options.rowSeparator);
       if (splitEnd.length > 0) {
         tempRows[0] = splitEnd + tempRows[0];
@@ -52,12 +55,17 @@ module.exports = function(knex, path, tableName, mapTo, options) {
         });
         inserts.push(knex(tableName).insert(knexRow));
       });
-    })
+    };
 
-    stream.on('end', function() {
+    function onEnd() {
+
         return Promise.all(inserts).then(function () {
+
+            stream.removeListener('data', onData);
+            stream.removeListener('end', onEnd);
+
             return resolve('all rows inserted');
         });
-    });
+    };
   });
 }
